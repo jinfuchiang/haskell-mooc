@@ -47,10 +47,10 @@ type Col   = Int
 type Coord = (Row, Col)
 
 nextRow :: Coord -> Coord
-nextRow (i,j) = todo
+nextRow (i,j) = (i+1, 1)
 
 nextCol :: Coord -> Coord
-nextCol (i,j) = todo
+nextCol (i,j) = (i,j+1)
 
 --------------------------------------------------------------------------------
 -- Ex 2: Implement the function prettyPrint that, given the size of
@@ -103,7 +103,28 @@ nextCol (i,j) = todo
 type Size = Int
 
 prettyPrint :: Size -> [Coord] -> String
-prettyPrint = todo
+prettyPrint n = foldr replaceWithQByCoord defBoard
+    where
+        defBoard :: String
+        defBoard = concat $ replicate n (replicate n '.' ++ "\n")
+        replaceWithQByCoord (r,c) board = replaceByCoord (r,c) board 'Q' n
+
+replaceByCoord :: Coord -> String -> Char -> Int -> String
+replaceByCoord (r,c) board char n = take ((r-1)*(n+1) + (c-1)) board ++ [char] ++ drop ((r-1)*(n+1) + c) board
+
+-- 逐点构造二维字符串
+-- prettyPrint :: Size -> [Coord] -> String
+--  -- This is the solution to the challenge:
+-- prettyPrint n qs =
+--   let
+--     helper (i,j) ((r,c):qs)
+--       | i==r && j == c       = 'Q'  : helper (nextCol (i,j)) qs
+--     helper (i,j) qs
+--       | i > n                = ""
+--       | j > n                = '\n' : helper (nextRow (i,j)) qs
+--       | otherwise            = '.'  : helper (nextCol (i,j)) qs
+--   in
+--     helper (1,1) (sort qs)
 
 --------------------------------------------------------------------------------
 -- Ex 3: The task in this exercise is to define the relations sameRow, sameCol,
@@ -127,16 +148,16 @@ prettyPrint = todo
 --   sameAntidiag (500,5) (5,500) ==> True
 
 sameRow :: Coord -> Coord -> Bool
-sameRow (i,j) (k,l) = todo
+sameRow (i,j) (k,l) = i == k
 
 sameCol :: Coord -> Coord -> Bool
-sameCol (i,j) (k,l) = todo
+sameCol (i,j) (k,l) = j == l
 
 sameDiag :: Coord -> Coord -> Bool
-sameDiag (i,j) (k,l) = todo
+sameDiag (i,j) (k,l) = k-i == l-j
 
 sameAntidiag :: Coord -> Coord -> Bool
-sameAntidiag (i,j) (k,l) = todo
+sameAntidiag (i,j) (k,l) = -(k-i) == (l-j)
 
 --------------------------------------------------------------------------------
 -- Ex 4: In chess, a queen may capture another piece in the same row, column,
@@ -191,7 +212,15 @@ type Candidate = Coord
 type Stack     = [Coord]
 
 danger :: Candidate -> Stack -> Bool
-danger = todo
+danger (r, c)  = any (\(r', c')->check (r', c'))
+    where
+        check :: Coord -> Bool
+        check (r2, c2) = any (\f->f (r,c) (r2, c2)) [sameCol, sameRow, sameDiag, sameAntidiag]
+
+-- 列表生成式写二维循环
+-- danger :: Candidate -> Stack -> Bool
+-- danger c qs = or [r c q | r <- relations, q <- qs]
+--   where relations = [sameRow, sameCol, sameDiag, sameAntidiag]
 
 --------------------------------------------------------------------------------
 -- Ex 5: In this exercise, the task is to write a modified version of
@@ -224,9 +253,41 @@ danger = todo
 --
 -- (For those that did the challenge in exercise 2, there's probably no O(n^2)
 -- solution to this version. Any working solution is okay in this exercise.)
+type DirRow = Int
+type DirCol = Int
+type Dir = (DirRow, DirCol)
 
+-- 在皇后的基础上修改字符串
 prettyPrint2 :: Size -> Stack -> String
-prettyPrint2 = todo
+prettyPrint2 n qs = foldr (\q board->go board q dirs) (prettyPrint n qs) qs
+    where
+        dirs = [(0,-1), (1,0), (0,1), (-1,0), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+        go :: String -> Coord -> [Dir] -> String
+        -- 皇后的危险区域
+        go board (r, c) [] = board
+        go board (r, c) (dir:dirs) = go (go' board (r,c) dir) (r,c) dirs
+
+        go' :: String -> Coord -> Dir -> String
+        -- 皇后在一个方向上的危险区域
+        go' board (r, c) (dr, dc)
+            | r < 1 || c < 1 || r > n || c > n = board
+            | board !! ((c-1) + (r-1) * (n+1)) /= 'Q' = go' (replaceWithSharpByCoord (r, c) board) (r+dr, c+dc) (dr, dc)
+            | otherwise = go' board (r+dr, c+dc) (dr, dc)
+            where
+                replaceWithSharpByCoord (r',c') board = replaceByCoord (r',c') board '#' n
+
+-- 逐点生成二维字符串
+-- prettyPrint2 :: Size -> Stack -> String
+-- prettyPrint2 n qs =
+--   let
+--     helper (i,j) qs
+--       | i > n           = ""
+--       | j > n           = '\n' : helper (nextRow (i,j)) qs
+--       | (i,j) `elem` qs = 'Q'  : helper (nextCol (i,j)) qs
+--       | danger (i,j) qs = '#'  : helper (nextCol (i,j)) qs
+--       | otherwise       = '.'  : helper (nextCol (i,j)) qs
+--   in
+--     helper (1,1) (sort qs)
 
 --------------------------------------------------------------------------------
 -- Ex 6: Now that we can check if a piece can be safely placed into a square in
@@ -271,7 +332,10 @@ prettyPrint2 = todo
 --     Q#######
 
 fixFirst :: Size -> Stack -> Maybe Stack
-fixFirst n s = todo
+fixFirst n (q@(r, c):s)
+    | r < 1 || c < 1 || r > n || c > n = Nothing
+    | danger q s = fixFirst n ( nextCol q:s )
+    | otherwise = Just (q:s)
 
 --------------------------------------------------------------------------------
 -- Ex 7: We need two helper functions for stack management.
@@ -293,10 +357,11 @@ fixFirst n s = todo
 -- Hint: Remember nextRow and nextCol? Use them!
 
 continue :: Stack -> Stack
-continue s = todo
+continue arg@(q:ss) = nextRow q : arg
 
 backtrack :: Stack -> Stack
-backtrack s = todo
+backtrack (q1:q2:ss) = nextCol q2 : ss
+backtrack _ = []
 
 --------------------------------------------------------------------------------
 -- Ex 8: Let's take a step. Our algorithm solves the problem (in a
@@ -365,7 +430,8 @@ backtrack s = todo
 --     step 8 [(6,1),(5,4),(4,2),(3,5),(2,3),(1,1)] ==> [(5,5),(4,2),(3,5),(2,3),(1,1)]
 
 step :: Size -> Stack -> Stack
-step = todo
+step n s = case fixFirst n s of Nothing -> backtrack s
+                                Just ns -> continue ns
 
 --------------------------------------------------------------------------------
 -- Ex 9: Let's solve our puzzle! The function finish takes a partial
@@ -380,7 +446,7 @@ step = todo
 -- solve the n queens problem.
 
 finish :: Size -> Stack -> Stack
-finish = todo
+finish n s = if length s == n+1 then tail s else finish n (step n s)
 
 solve :: Size -> Stack
 solve n = finish n [(1,1)]
