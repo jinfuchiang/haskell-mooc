@@ -16,7 +16,11 @@ import Mooc.Todo
 --   take 10 (doublify [0..])  ==>  [0,0,1,1,2,2,3,3,4,4]
 
 doublify :: [a] -> [a]
-doublify = todo
+-- doublify xs = foldr (++) [] (map ( take 2 . repeat) xs)
+-- doublify = foldr ((++) . take 2 . repeat) []
+-- doublify = concatMap (take 2 . repeat)
+doublify = concatMap (replicate 2)
+-- doublify (x:xs) = x:x:doublify xs
 
 ------------------------------------------------------------------------------
 -- Ex 2: Implement the function interleave that takes two lists and
@@ -37,7 +41,11 @@ doublify = todo
 --   take 10 (interleave [1..] (repeat 0)) ==> [1,0,2,0,3,0,4,0,5,0]
 
 interleave :: [a] -> [a] -> [a]
-interleave = todo
+interleave [] ys = ys
+interleave xs [] = xs
+interleave (x:xs) (y:ys) = x : y : interleave xs ys
+-- interleave (x:xs) ys = x:interleave ys xs
+
 
 ------------------------------------------------------------------------------
 -- Ex 3: Deal out cards. Given a list of players (strings), and a list
@@ -56,7 +64,7 @@ interleave = todo
 -- Hint: remember the functions cycle and zip?
 
 deal :: [String] -> [String] -> [(String,String)]
-deal = todo
+deal players cards = zip cards (cycle players)
 
 ------------------------------------------------------------------------------
 -- Ex 4: Compute a running average. Go through a list of Doubles and
@@ -74,7 +82,10 @@ deal = todo
 
 
 averages :: [Double] -> [Double]
-averages = todo
+averages xs = averages' 1 0 xs
+    where
+        averages' _ _ [] = []
+        averages' n sum (x:xs) = (x+sum)/n:averages' (n+1) (sum+x) xs
 
 ------------------------------------------------------------------------------
 -- Ex 5: Given two lists, xs and ys, and an element z, generate an
@@ -92,7 +103,9 @@ averages = todo
 --   take 10 (alternate [1,2] [3,4,5] 0) ==> [1,2,0,3,4,5,0,1,2,0]
 
 alternate :: [a] -> [a] -> a -> [a]
-alternate xs ys z = todo
+alternate xs ys z = xs ++ [z] ++ ys ++ [z] ++ alternate xs ys z
+-- alternate xs ys z = xs ++ z : alternate ys xs z
+-- alternate' xs ys z = cycle (xs++[z]++ys++[z])
 
 ------------------------------------------------------------------------------
 -- Ex 6: Check if the length of a list is at least n. Make sure your
@@ -104,7 +117,11 @@ alternate xs ys z = todo
 --   lengthAtLeast 10 [0..]  ==> True
 
 lengthAtLeast :: Int -> [a] -> Bool
-lengthAtLeast = todo
+lengthAtLeast n (x:xs)
+    | n>0 = lengthAtLeast (n-1) xs
+    | otherwise = True
+lengthAtLeast n [] = n <= 0
+-- lengthAtLeastf n xs = length (take n xs) == n
 
 ------------------------------------------------------------------------------
 -- Ex 7: The function chunks should take in a list, and a number n,
@@ -122,7 +139,13 @@ lengthAtLeast = todo
 --   take 4 (chunks 3 [0..]) ==> [[0,1,2],[1,2,3],[2,3,4],[3,4,5]]
 
 chunks :: Int -> [a] -> [[a]]
-chunks = todo
+chunks n [] = []
+chunks n (x:xs)
+    | lengthAtLeast n (x:xs) = take n (x:xs) : chunks n xs
+    | otherwise = []
+    -- where
+    --     chunks' 0 _ = []
+    --     chunks' n (x:xs) = x:chunks' (n-1) xs
 
 ------------------------------------------------------------------------------
 -- Ex 8: Define a newtype called IgnoreCase, that wraps a value of
@@ -137,8 +160,12 @@ chunks = todo
 -- Examples:
 --   ignorecase "abC" == ignorecase "ABc"  ==>  True
 --   ignorecase "acC" == ignorecase "ABc"  ==>  False
+newtype IgnoreCase = IgnoreCase String
+instance Eq IgnoreCase where
+    (==) (IgnoreCase l) (IgnoreCase r) =  map toLower l == map toLower r
 
-ignorecase = todo
+ignorecase :: String -> IgnoreCase
+ignorecase = IgnoreCase
 
 ------------------------------------------------------------------------------
 -- Ex 9: Here's the Room type and some helper functions from the
@@ -182,4 +209,10 @@ play room (d:ds) = case move room d of Nothing -> [describe room]
                                        Just r -> describe room : play r ds
 
 maze :: Room
-maze = todo
+maze = Room "Maze" [("Left", maze2), ("Right", maze3)]
+
+maze2 :: Room
+maze2 = Room "Deeper in the maze" [("Left", maze3), ("Right", maze)]
+
+maze3 :: Room
+maze3 = Room "Elsewhere in the maze" [("Left", maze), ("Right", maze2)]
