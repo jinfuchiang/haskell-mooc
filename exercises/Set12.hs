@@ -2,7 +2,7 @@ module Set12 where
 
 import Data.Functor
 import Data.Foldable
-import Data.List
+import Data.List hiding (foldr)
 import Data.Monoid
 
 import Mooc.Todo
@@ -223,3 +223,7 @@ instance Foldable Tree where
 -- you'll like the `loeb` function:
 --
 --   https://github.com/quchen/articles/blob/master/loeb-moeb.md
+
+myfoldr :: Foldable t => (a -> b -> b) -> b -> t a -> b
+myfoldr f init [] = init
+myfoldr f init (last:lst) = f last (myfoldr f init lst)
